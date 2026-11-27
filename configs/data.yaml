@@ -1,0 +1,99 @@
+# Map/episode generation and dataset splits (project doc §8.1, §8.2).
+# Changing anything here changes the split hashes, and cached datasets built from
+# the old values are refused at load time (rebuild with build_datasets --force).
+
+seed: 18660
+
+layout:
+  border_margin: 0.5          # min distance of start box / goal disk from the boundary
+  init_spacing: 0.25          # min center-to-center distance between agents at t=0 (> 2 r_a)
+  start_area_fraction: [0.20, 0.35]  # N * pi * init_spacing^2 / 4 / start-box area
+  start_aspect: [1.0, 2.0]    # start box height / width
+  max_start_width_fraction: 0.25  # cap on box width / domain width (big swarms get taller boxes)
+  start_jitter: 0.5           # random inward shift of the start box from the left margin
+  goal_jitter: 0.5            # random inward shift of the goal from the right margin
+  min_start_goal_gap: 1.0     # min distance between start box and goal disk
+  obstacle_clearance: 0.3     # min gap between any obstacle and the start box / goal disk
+  placement_tries: 100        # per-obstacle placement attempts
+  max_map_tries: 200          # whole-map attempts before giving up
+
+initial_velocity:
+  mode: zero                  # zero | isotropic (both independent of the goal)
+  max_speed: 0.0              # used only by isotropic
+
+feasibility:
+  resolution: 0.05            # occupancy-grid cell size for the connectivity check
+
+descriptor:
+  resolution: 0.05
+  gap_cap: 4.0                # passage widths above this count as "open" (absolute units)
+
+scenarios:
+  open:
+    kind: open
+  single_obstacle:
+    kind: single
+    radius: [0.5, 1.2]
+    position: [0.35, 0.65]    # fraction of the way from start center to goal
+    lateral_offset: [-0.5, 0.5]
+  bottleneck:
+    kind: wall
+    gap: [0.6, 1.5]           # surface-to-surface gap width
+    wall_radius: 0.3
+    wall_spacing: 0.3         # center spacing (< 2 * wall_radius, so the wall is solid)
+    gap_edge_margin: 1.0      # min distance from the gap to the top/bottom boundary
+  random_obstacles:
+    kind: random
+    count: [3, 8]
+    radius: [0.3, 0.8]
+  dense_random:               # OOD
+    kind: random
+    count: [10, 15]
+    radius: [0.3, 0.8]
+  narrow_bottleneck:          # OOD
+    kind: wall
+    gap: [0.35, 0.6]
+    wall_radius: 0.3
+    wall_spacing: 0.3
+    gap_edge_margin: 1.0
+  large_obstacles:            # OOD: radii above every training range (max 1.2)
+    kind: random
+    count: [2, 4]
+    radius: [1.3, 2.0]
+
+mixtures:
+  train_id: [open, single_obstacle, bottleneck, random_obstacles]
+  ood: [dense_random, narrow_bottleneck, large_obstacles]
+  bottleneck_only: [bottleneck]
+
+# Each split: n_maps maps x episodes_per_map episodes, all with the same N.
+# size_setting: fixed_area keeps world.size; fixed_density scales the side by
+# sqrt(N / world.n_agents), scales random-obstacle counts by the area ratio, and
+# scales the horizon by the same side ratio (path length).
+# roles (optional): consecutive episode roles within each map, e.g. Exp3
+# adaptation vs evaluation episodes.
+splits:
+  # Exp1 / Exp2 training (fully informed; also the FI controls for Exp2-PI)
+  exp1_train:       {mixture: train_id, n_maps: 16, episodes_per_map: 1, n_agents: 30}
+  exp2_train:       {mixture: train_id, n_maps: 32, episodes_per_map: 1, n_agents: 30}
+  exp2_train_single_bottleneck: {mixture: bottleneck_only, n_maps: 1, episodes_per_map: 32, n_agents: 30}
+  val_id:           {mixture: train_id, n_maps: 32, episodes_per_map: 1, n_agents: 30}
+  # Exp2 test sets
+  test_id:          {mixture: train_id, n_maps: 100, episodes_per_map: 1, n_agents: 30}
+  test_ood:         {mixture: ood, n_maps: 100, episodes_per_map: 1, n_agents: 30}
+  test_scale_n20_fixed_area:     {mixture: train_id, n_maps: 50, episodes_per_map: 1, n_agents: 20}
+  test_scale_n50_fixed_area:     {mixture: train_id, n_maps: 50, episodes_per_map: 1, n_agents: 50}
+  test_scale_n100_fixed_area:    {mixture: train_id, n_maps: 50, episodes_per_map: 1, n_agents: 100}
+  test_scale_n20_fixed_density:  {mixture: train_id, n_maps: 50, episodes_per_map: 1, n_agents: 20, size_setting: fixed_density}
+  test_scale_n50_fixed_density:  {mixture: train_id, n_maps: 50, episodes_per_map: 1, n_agents: 50, size_setting: fixed_density}
+  test_scale_n100_fixed_density: {mixture: train_id, n_maps: 50, episodes_per_map: 1, n_agents: 100, size_setting: fixed_density}
+  # Exp2-PI (informed fraction p is applied at load time via the nested order)
+  pi_train:         {mixture: train_id, n_maps: 32, episodes_per_map: 1, n_agents: 30}
+  pi_val:           {mixture: train_id, n_maps: 32, episodes_per_map: 1, n_agents: 30}
+  pi_test_id:       {mixture: train_id, n_maps: 50, episodes_per_map: 1, n_agents: 30}
+  pi_test_ood:      {mixture: ood, n_maps: 50, episodes_per_map: 1, n_agents: 30}
+  # Exp3: 8 adaptation + 16 evaluation episodes per map
+  exp3_train:         {mixture: train_id, n_maps: 96, episodes_per_map: 24, n_agents: 30, roles: {adapt: 8, eval: 16}}
+  exp3_val:           {mixture: train_id, n_maps: 16, episodes_per_map: 24, n_agents: 30, roles: {adapt: 8, eval: 16}}
+  exp3_test_interp:   {mixture: train_id, n_maps: 24, episodes_per_map: 24, n_agents: 30, roles: {adapt: 8, eval: 16}}
+  exp3_test_extrap:   {mixture: ood, n_maps: 8, episodes_per_map: 24, n_agents: 30, roles: {adapt: 8, eval: 16}}

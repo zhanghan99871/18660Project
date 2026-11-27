@@ -1,0 +1,62 @@
+# Physical, numerical and task constants (project doc §10, λ weights from §5.3).
+# Everything here is *static*: it is baked into compiled JAX functions, so changing
+# a value means recompiling. Per-episode quantities (obstacles, goal, x0, ...) are
+# dynamic and live in the cached episode datasets instead.
+
+world:
+  size: [10.0, 10.0]          # domain [0, Lx] x [0, Ly]
+  n_agents: 30                # training swarm size; reference N for scaling
+
+agent:
+  radius: 0.05                # r_a
+  v_max: 1.5
+  a_max: 3.0
+  damping: 0.1                # beta, fixed, not optimized
+
+perception:
+  sensor_radius: 1.0          # r: alignment, cohesion, obstacle sensing
+  sep_radius: 0.3             # r_sep < r: separation
+  sep_softening: 0.05         # l_s (= r_a), physical softening length
+
+forces:
+  obstacle_influence: 0.5     # d_s; must exceed braking distance v_max^2 / (2 a_max)
+  tangential_gain: 1.0        # k_t
+  tangential_sharpness: 5.0   # c_t
+  tangential_bias: 0.1        # b_t
+
+goal:
+  capacity_factor: 0.8        # R_g = capacity_factor * r_sep * sqrt(N)
+  length_scale_factor: 1.0    # l_g = length_scale_factor * R_g
+
+features:
+  n_ref: 5.0
+  goal_distance_scale: 2.0    # L_z
+
+controller:
+  w_max: [4.0, 4.0, 4.0, 4.0, 4.0]   # separation, alignment, cohesion, goal, obstacle
+  search_box: [-4.0, 4.0]            # shared by every optimizer, for b and A
+
+simulation:
+  dt: 0.05
+  horizon: 400                # T
+
+smoothing:
+  eta_schedule: [0.4, 0.2, 0.1, 0.05]
+  fixed_soft_eta: 0.05
+
+loss:
+  safety_margin: 0.025        # delta, training-only buffer
+  weights:
+    goal: 1.0                 # lambda_g
+    time: 1.0                 # lambda_t
+    collision: 10.0           # lambda_c
+    obstacle: 10.0            # lambda_o
+    boundary: 10.0            # lambda_b
+    energy: 0.05              # lambda_e
+
+evaluation:
+  contact_tol: 1.0e-9         # absorbs floating-point rounding only
+
+numerics:
+  eps: 1.0e-6                 # epsilon in R_eps / N_eps / U_eps
+  precision: float64          # float64 | float32; see swarm.config.configure_jax
