@@ -1,0 +1,42 @@
+# Hand-tuned baseline protocol (doc §8.2, Exp1): literature-style default
+# weights, then at most 20 logged manual trials on the validation split.
+# Weights are behavior weights in (0, w_max) for (separation, alignment,
+# cohesion, goal, obstacle); their logits must lie inside the search box, so
+# each weight is at most 4 * sigmoid(4) ~= 3.92.
+#
+# Selection: highest success-and-collision-free rate on `split`, ties broken by
+# lower task loss. Run `python -m experiments.hand_tuned` after editing.
+
+split: val_id
+max_trials: 20
+mu_z:
+  fully_informed: exp2_train      # feature centering for FI adaptive training
+  partially_informed: pi_train    # ... and for PI training (masked features)
+  pi_fraction: 0.2
+
+trials:
+  # Round 1: starting point and force-balance reasoning. A stopped agent's goal
+  # pull (w_g) and obstacle push (w_o) balance at clearance d_s (1 - w_g / w_o),
+  # so w_o must clearly exceed w_g to keep agents off obstacles.
+  - {name: default, weights: [2.0, 1.0, 1.0, 3.0, 3.0], note: "literature-style starting point"}
+  - {name: obs_gt_goal, weights: [2.0, 1.0, 1.0, 2.0, 3.9], note: "w_o > w_g: equilibrium clearance ~0.24"}
+  - {name: weak_goal, weights: [2.0, 1.0, 1.0, 1.5, 3.9], note: "equilibrium clearance ~0.31"}
+  - {name: more_sep, weights: [3.0, 1.0, 1.0, 1.5, 3.9], note: "stronger separation against pair contacts"}
+  - {name: weak_flock, weights: [2.0, 0.5, 0.5, 1.5, 3.9], note: "less cohesion pressure in crowds"}
+  - {name: weak_cohesion, weights: [3.0, 1.0, 0.3, 1.5, 3.9], note: "cohesion pushes agents into obstacles"}
+  # Round 2 (after round 1): the deepest obstacle penetrations happen at full
+  # speed with separation from the crowd behind (up to 3 per neighbor before
+  # weighting, vs 1 for the obstacle push at contact) cancelling the obstacle
+  # push. Lower the separation weight.
+  - {name: low_sep, weights: [1.0, 1.0, 0.3, 1.5, 3.9], note: "less crowd pressure into obstacles"}
+  - {name: low_sep_weak_goal, weights: [1.0, 1.0, 0.3, 1.0, 3.9], note: "slower approach"}
+  - {name: min_sep, weights: [0.5, 1.0, 0.3, 1.5, 3.9], note: "even less separation; watch pair contacts"}
+  - {name: low_sep_align, weights: [1.0, 2.0, 0.3, 1.5, 3.9], note: "stronger alignment damps relative motion"}
+  - {name: low_sep_flock, weights: [1.0, 0.5, 0.5, 1.0, 3.9], note: "weak flocking, slow approach"}
+  # Round 3 (after round 2): with low separation, bottlenecks show many
+  # agent-agent contacts (crowding at the gap). Trade separation back in
+  # while keeping the goal weak.
+  - {name: mid_sep_weak_goal, weights: [1.5, 1.0, 0.3, 1.0, 3.9], note: "between low_sep_weak_goal and weak_goal"}
+  - {name: mid_sep_align, weights: [1.5, 2.0, 0.3, 1.0, 3.9], note: "alignment to reduce jostling at the gap"}
+  - {name: low_sep_align_weak_goal, weights: [1.0, 2.0, 0.3, 1.0, 3.9], note: "combine trials 8 and 10"}
+  - {name: slow_approach, weights: [1.5, 1.0, 0.3, 0.7, 3.9], note: "slower crowds; watch completion time"}
