@@ -45,6 +45,6 @@ lambda_check:
   ratio_ok: true
   episodes_with_contacts: 15
   safety_dominates_in_contact_episodes: 0.0
-git_commit: 4e0dd5226101fb0fd55b5852bf40ece7e65c9260
-created: '2026-11-27T21:01:03'
-trials_log: results/hand_tuned/20261127-210046-585669/trials.csv
+git_commit: 123c8ba63078afec9e5ca18950c80b197e31cc70
+created: '2026-11-27T21:02:36'
+trials_log: results/hand_tuned/20261127-210221-152004/trials.csv
