@@ -12,10 +12,7 @@ from typing import Any
 
 import yaml
 
-from swarm.config import PROJECT_ROOT, config_hash
-
-RESULTS_ROOT = PROJECT_ROOT / "results"
-DATA_ROOT = PROJECT_ROOT / "data"
+from swarm.config import DATA_ROOT, PROJECT_ROOT, RESULTS_ROOT, config_hash  # noqa: F401
 
 
 def git_info(root: str | Path = PROJECT_ROOT) -> dict[str, Any]:

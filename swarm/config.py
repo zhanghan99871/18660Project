@@ -23,6 +23,8 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = PROJECT_ROOT / "configs"
+DATA_ROOT = PROJECT_ROOT / "data"
+RESULTS_ROOT = PROJECT_ROOT / "results"
 
 BEHAVIORS = ("separation", "alignment", "cohesion", "goal", "obstacle")
 
