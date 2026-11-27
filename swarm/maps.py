@@ -269,7 +269,13 @@ def _wall(rng, ctx: PlacementContext, params: dict) -> Obstacles | None:
     if x_hi < x_lo or y_hi < y_lo:
         return None
     xw = rng.uniform(x_lo, x_hi)
-    yg = rng.uniform(y_lo, y_hi)
+    # Center the gap near where the start-goal line crosses the wall. A gap far
+    # off that line is a trap for agents that sense only ~r around them (like the
+    # U-shaped obstacles the doc excludes), not a narrow-passage test.
+    s = 0.5 * (ctx.start_lo + ctx.start_hi)
+    frac = (xw - s[0]) / (ctx.goal[0] - s[0])
+    y_line = s[1] + frac * (ctx.goal[1] - s[1])
+    yg = float(np.clip(y_line + rng.uniform(*params["gap_offset"]), y_lo, y_hi))
     ys = wall_circle_ys(yg, gap, radius, spacing, float(ctx.lower[1]), float(ctx.upper[1]))
     centers = np.stack([np.full_like(ys, xw), ys], axis=-1)
     radii = np.full(len(ys), float(radius))

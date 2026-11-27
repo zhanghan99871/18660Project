@@ -68,6 +68,18 @@ def test_generated_maps_respect_layout_rules(scenario, sim, data_cfg):
             assert params["gap"][0] - 1e-9 <= gaps.max() <= params["gap"][1] + 1e-9
             assert np.all(np.delete(gaps, gaps.argmax()) < 0)   # every other pair overlaps
             assert len(np.unique(m.centers[:, 0])) == 1           # a straight vertical wall
+            # the gap sits near where the start-goal line crosses the wall (or at a clip limit)
+            ys = np.sort(m.centers[:, 1])
+            k = int(np.argmax(np.diff(ys)))
+            gap_center = 0.5 * (ys[k] + ys[k + 1])
+            s, xw = m.start_center, m.centers[0, 0]
+            y_line = s[1] + (xw - s[0]) / (m.goal[0] - s[0]) * (m.goal[1] - s[1])
+            half = 0.5 * (ys[k + 1] - ys[k]) - params["wall_radius"]
+            lo = m.lower[1] + params["gap_edge_margin"] + half
+            hi = m.upper[1] - params["gap_edge_margin"] - half
+            off_lo, off_hi = params["gap_offset"]
+            clipped = np.isclose(gap_center, lo) or np.isclose(gap_center, hi)
+            assert clipped or off_lo - 1e-9 <= gap_center - y_line <= off_hi + 1e-9
 
 
 def test_start_box_area_matches_target_fraction(sim, data_cfg):

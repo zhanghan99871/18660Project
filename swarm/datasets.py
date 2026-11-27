@@ -25,7 +25,7 @@ from swarm.maps import SCENARIOS, LayoutParams, MapSpec, sample_map
 from swarm.rng import Stream, stream_rng
 
 # Bump whenever generator code changes what a given config produces.
-GENERATOR_VERSION = 1
+GENERATOR_VERSION = 2   # 2: bottleneck gap centered near the start-goal line
 
 SIZE_SETTINGS = ("fixed_area", "fixed_density")
 

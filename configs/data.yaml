@@ -39,6 +39,7 @@ scenarios:
   bottleneck:
     kind: wall
     gap: [0.6, 1.5]           # surface-to-surface gap width
+    gap_offset: [-1.0, 1.0]   # gap center relative to where the start-goal line crosses the wall
     wall_radius: 0.3
     wall_spacing: 0.3         # center spacing (< 2 * wall_radius, so the wall is solid)
     gap_edge_margin: 1.0      # min distance from the gap to the top/bottom boundary
@@ -53,6 +54,7 @@ scenarios:
   narrow_bottleneck:          # OOD
     kind: wall
     gap: [0.35, 0.6]
+    gap_offset: [-1.0, 1.0]
     wall_radius: 0.3
     wall_spacing: 0.3
     gap_edge_margin: 1.0

@@ -77,6 +77,7 @@ class FeatureParams:
 class ControllerParams:
     w_max: tuple[float, ...]
     search_box: tuple[float, float]
+    l2_reg: float
 
 
 @dataclasses.dataclass(frozen=True)
@@ -104,12 +105,17 @@ class LossWeights:
 @dataclasses.dataclass(frozen=True)
 class LossParams:
     safety_margin: float
+    L0_floor: float
     weights: LossWeights
 
 
 @dataclasses.dataclass(frozen=True)
 class EvaluationParams:
     contact_tol: float
+    success_threshold: float
+    deadlock_speed_fraction: float
+    deadlock_window: int
+    completion_dwell: int
 
 
 @dataclasses.dataclass(frozen=True)
@@ -171,6 +177,13 @@ class SimParams:
             problems.append("precision must be float32 or float64")
         if min(a.radius, a.v_max, a.a_max, self.simulation.dt, self.numerics.eps) <= 0:
             problems.append("radius, v_max, a_max, dt and eps must be positive")
+        if self.simulation.horizon < 1:
+            problems.append("horizon must be >= 1")
+        if self.loss.L0_floor <= 0 or self.controller.l2_reg < 0:
+            problems.append("L0_floor must be positive and l2_reg non-negative")
+        e = self.evaluation
+        if not 0 < e.success_threshold <= 1 or e.deadlock_window < 1 or e.completion_dwell < 1:
+            problems.append("need 0 < success_threshold <= 1 and windows >= 1")
         if problems:
             raise ValueError("invalid SimParams: " + "; ".join(problems))
 
@@ -247,6 +260,27 @@ def load_sim_params(path: str | Path | None = None, overrides: dict | None = Non
     params = from_dict(SimParams, data, "base")
     params.validate()
     return params
+
+
+FROZEN_PATH = CONFIG_DIR / "frozen.yaml"
+
+
+def load_frozen(path: str | Path | None = None) -> dict[str, Any]:
+    """Quantities frozen before any optimization (written by experiments.hand_tuned).
+
+    Keys: b_hand (5 logits of the hand-tuned rule), hand_weights (5),
+    mu_z_fi / mu_z_pi (4-vector feature centerings for fully / partially
+    informed training), plus provenance fields.
+    """
+    import numpy as np
+
+    path = Path(path or FROZEN_PATH)
+    if not path.exists():
+        raise FileNotFoundError(f"{path} not found; run `python -m experiments.hand_tuned` first")
+    data = load_yaml(path)
+    for key in ("b_hand", "hand_weights", "mu_z_fi", "mu_z_pi"):
+        data[key] = np.asarray(data[key], dtype=np.float64)
+    return data
 
 
 def deep_update(base: dict, updates: dict) -> dict:
